@@ -178,33 +178,60 @@
   }
 
   /* ---------- hero (featured event) ---------- */
-  .hero{margin-bottom:76px;}
-  .hero-title{
-    font-size:clamp(1.7rem,4.2vw,2.5rem);font-weight:700;line-height:1.15;
-    margin:0 0 24px;color:var(--ink);letter-spacing:-.01em;
-  }
-  .hero figure{margin:0 0 30px;}
-  .hero img{
-    width:100%;height:min(58vh,560px);object-fit:cover;display:block;
+  .hero{margin-bottom:60px;}
+
+  .hero-media{
+    position:relative;margin:0 0 40px;
+    height:min(72vh,640px);
+    background:var(--bg-soft);
     border:1px solid var(--line);
-    filter:grayscale(1) contrast(1.05);
+    overflow:hidden;
   }
-  .hero figcaption{
-    font-size:.8rem;color:var(--ink-faint);margin-top:10px;text-align:right;
+  .hero-media img{
+    width:100%;height:100%;object-fit:cover;display:block;
+    filter:grayscale(1) contrast(1.08);
   }
-  .hero .year{
-    font-weight:700;color:var(--accent);
-    font-size:1.3rem;margin-right:12px;
+  .hero-media .overlay{
+    position:absolute;inset:0;
+    background:linear-gradient(to top, rgba(0,0,0,.92) 0%, rgba(0,0,0,.55) 38%, rgba(0,0,0,0) 72%);
   }
-  .hero .lead{
-    font-size:clamp(1.25rem,2.6vw,1.6rem);font-weight:600;line-height:1.5;
-    margin:0 0 20px;color:var(--ink);
+  .hero-media .overlay-text{
+    position:absolute;left:0;right:0;bottom:0;padding:34px 30px;
   }
+  .hero-media .section-label{color:rgba(255,255,255,.72);margin-bottom:14px;}
+  .hero-media .hero-title{
+    font-size:clamp(1.8rem,4.6vw,3rem);font-weight:700;line-height:1.1;
+    margin:0 0 10px;color:#fff;letter-spacing:-.015em;
+    text-wrap:balance;
+  }
+  .hero-media .hero-subtitle{
+    font-size:1rem;color:rgba(255,255,255,.78);margin:0;max-width:560px;
+  }
+  .hero-media figcaption{
+    position:absolute;right:14px;bottom:14px;
+    font-size:.72rem;color:rgba(255,255,255,.6);
+  }
+  /* fallback header used when there's no image at all */
+  .hero-title.no-media{
+    font-size:clamp(1.8rem,4.6vw,2.8rem);font-weight:700;line-height:1.15;
+    margin:0 0 10px;color:var(--ink);letter-spacing:-.01em;
+  }
+  .hero-subtitle.no-media{color:var(--ink-dim);font-size:1rem;margin:0 0 32px;}
+
+  .hero-quote{
+    margin:0 0 34px;padding-left:22px;border-left:3px solid var(--accent);
+    font-size:clamp(1.2rem,2.6vw,1.5rem);font-style:italic;font-weight:500;
+    line-height:1.55;color:var(--ink);max-width:640px;
+  }
+  .hero-quote .yr{
+    font-style:normal;font-weight:700;color:var(--accent);margin-right:8px;
+  }
+
   .hero .extract{
-    font-size:1.08rem;line-height:1.75;color:var(--ink-dim);margin:0 0 18px;
+    font-size:1.08rem;line-height:1.8;color:var(--ink-dim);margin:0 0 20px;
     max-width:640px;
   }
-  .hero .inline-figure{margin:26px 0;max-width:640px;}
+  .hero .inline-figure{margin:30px 0;max-width:640px;}
   .hero .inline-figure img{
     width:100%;max-height:340px;object-fit:cover;display:block;
     border:1px solid var(--line);
@@ -213,7 +240,6 @@
   .hero .inline-figure figcaption{
     font-size:.78rem;color:var(--ink-faint);margin-top:8px;text-align:right;
   }
-  .hero .src{font-size:.85rem;color:var(--ink-faint);}
 
   footer.credit{
     margin-top:70px;padding-top:22px;border-top:1px solid var(--line-soft);
@@ -349,10 +375,6 @@
     return node;
   }
 
-  function wikiUrl(title){
-    return "https://pl.wikipedia.org/wiki/" + encodeURIComponent(title.replace(/ /g, "_"));
-  }
-
   function renderHero(pick){
     heroEl.innerHTML = "";
     if (!pick){
@@ -362,27 +384,39 @@
     heroEl.hidden = false;
     var entry = pick.entry;
     var images = pick.images || [];
-    heroEl.appendChild(el("span", { "class": "section-label" }, "Opowieść dnia"));
-
-    if (pick.title){
-      heroEl.appendChild(el("h2", { "class": "hero-title" }, pick.title));
-    }
+    var title = pick.title || entry.text;
 
     if (images[0]){
-      var figure = el("figure");
+      var media = el("div", { "class": "hero-media" });
       var img = el("img");
       img.src = images[0].source;
-      img.alt = images[0].caption || pick.title || entry.text;
+      img.alt = images[0].caption || title;
       img.loading = "lazy";
-      figure.appendChild(img);
-      if (images[0].caption) figure.appendChild(el("figcaption", null, images[0].caption));
-      heroEl.appendChild(figure);
+      media.appendChild(img);
+      media.appendChild(el("div", { "class": "overlay" }));
+
+      var overlayText = el("div", { "class": "overlay-text" });
+      overlayText.appendChild(el("span", { "class": "section-label" }, "Opowieść dnia"));
+      overlayText.appendChild(el("h2", { "class": "hero-title" }, title));
+      if (pick.subtitle){
+        overlayText.appendChild(el("p", { "class": "hero-subtitle" }, pick.subtitle));
+      }
+      media.appendChild(overlayText);
+
+      if (images[0].caption) media.appendChild(el("figcaption", null, images[0].caption));
+      heroEl.appendChild(media);
+    } else {
+      heroEl.appendChild(el("span", { "class": "section-label" }, "Opowieść dnia"));
+      heroEl.appendChild(el("h2", { "class": "hero-title no-media" }, title));
+      if (pick.subtitle){
+        heroEl.appendChild(el("p", { "class": "hero-subtitle no-media" }, pick.subtitle));
+      }
     }
 
-    var lead = el("p", { "class": "lead" });
-    lead.appendChild(el("span", { "class": "year" }, formatYear(entry.year)));
-    lead.appendChild(document.createTextNode(entry.text));
-    heroEl.appendChild(lead);
+    var quote = el("p", { "class": "hero-quote" });
+    quote.appendChild(el("span", { "class": "yr" }, formatYear(entry.year)));
+    quote.appendChild(document.createTextNode(entry.text));
+    heroEl.appendChild(quote);
 
     var paragraphs = pick.paragraphs || [];
     var extraImages = images.slice(1);
@@ -400,12 +434,6 @@
         heroEl.appendChild(figure2);
       }
     });
-
-    if (pick.pageUrl){
-      var src = el("p", { "class": "src" });
-      src.appendChild(el("a", { href: pick.pageUrl, target: "_blank", rel: "noopener" }, "Czytaj więcej →"));
-      heroEl.appendChild(src);
-    }
   }
 
   // ---- wikitext parsing ----
@@ -540,15 +568,15 @@
   }
 
   async function enrichHero(entry){
-    if (!entry.linkTitle) return { entry: entry, title: null, images: [], paragraphs: [], pageUrl: null };
+    if (!entry.linkTitle) return { entry: entry, title: null, subtitle: null, images: [], paragraphs: [] };
     var candidates = (entry.links && entry.links.length ? entry.links : [entry.linkTitle]).slice(0, 2);
     var topics = await Promise.all(candidates.map(fetchLinkedTopic));
     var chosen = topics.find(function(t){ return t.images.length; }) || topics[0];
     var summary = chosen.summary;
     var title = (summary && summary.title) || chosen.linkTitle;
+    var subtitle = summary && summary.description ? summary.description : null;
     var paragraphs = extractParagraphs(chosen.introData, summary && summary.extract);
-    var pageUrl = (summary && summary.content_urls && summary.content_urls.desktop && summary.content_urls.desktop.page) || wikiUrl(chosen.linkTitle);
-    return { entry: entry, title: title, images: chosen.images, paragraphs: paragraphs, pageUrl: pageUrl };
+    return { entry: entry, title: title, subtitle: subtitle, images: chosen.images, paragraphs: paragraphs };
   }
 
   async function pickHero(candidates){
