@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tego dnia</title>
-<meta name="description" content="Wpisz dowolny dzień i miesiąc, a dowiesz się, co istotnego wydarzyło się wtedy na świecie i w Polsce.">
+<meta name="description" content="Wpisz dowolny dzień i miesiąc, a poznasz jedną historię sprzed lat — o kimś lub o czymś — wraz z ilustracją.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.85em' font-size='82'%3E%F0%9F%95%B0%EF%B8%8F%3C/text%3E%3C/svg%3E">
 <style>
   :root{
@@ -215,28 +215,6 @@
   }
   .hero .src{font-size:.85rem;color:var(--ink-faint);}
 
-  /* ---------- other events ---------- */
-  .others h2{
-    font-weight:600;
-    font-size:1.05rem;margin:0 0 8px;padding-bottom:12px;border-bottom:1px solid var(--line-soft);
-    color:var(--ink);text-transform:uppercase;letter-spacing:.06em;
-  }
-  ul.others-list{list-style:none;margin:0;padding:0;}
-  ul.others-list li{
-    padding:26px 0;border-bottom:1px solid var(--line-soft);
-  }
-  ul.others-list li:last-child{border-bottom:none;}
-  ul.others-list .yr{
-    display:block;font-weight:700;color:var(--accent);
-    font-size:1.05rem;margin-bottom:8px;
-  }
-  ul.others-list p{
-    margin:0 0 8px;line-height:1.7;color:var(--ink-dim);font-size:1rem;
-  }
-  ul.others-list a.more{font-size:.82rem;color:var(--ink-faint);text-decoration:none;}
-  ul.others-list a.more:hover{color:var(--accent);text-decoration:underline;text-underline-offset:3px;}
-  .empty-note{color:var(--ink-faint);font-size:.95rem;}
-
   footer.credit{
     margin-top:70px;padding-top:22px;border-top:1px solid var(--line-soft);
     font-size:.78rem;color:var(--ink-faint);text-align:center;
@@ -282,10 +260,6 @@
 
         <div id="content" hidden>
           <div class="hero" id="hero"></div>
-          <div class="others">
-            <h2>Inne ważne wydarzenia</h2>
-            <ul class="others-list" id="others-list"></ul>
-          </div>
         </div>
       </div>
 
@@ -322,7 +296,6 @@
   var errDetail = document.getElementById("err-detail");
   var content = document.getElementById("content");
   var heroEl = document.getElementById("hero");
-  var othersListEl = document.getElementById("others-list");
 
   var today = new Date();
   var currentDay = today.getDate();
@@ -389,7 +362,7 @@
     heroEl.hidden = false;
     var entry = pick.entry;
     var images = pick.images || [];
-    heroEl.appendChild(el("span", { "class": "section-label" }, "Najważniejsze wydarzenie"));
+    heroEl.appendChild(el("span", { "class": "section-label" }, "Opowieść dnia"));
 
     if (pick.title){
       heroEl.appendChild(el("h2", { "class": "hero-title" }, pick.title));
@@ -433,30 +406,6 @@
       src.appendChild(el("a", { href: pick.pageUrl, target: "_blank", rel: "noopener" }, "Czytaj więcej →"));
       heroEl.appendChild(src);
     }
-  }
-
-  function renderOthers(items){
-    othersListEl.innerHTML = "";
-    if (!items.length){
-      var li = el("li");
-      li.appendChild(el("span", { "class": "empty-note" }, "Tego dnia archiwa milczą o innych wydarzeniach."));
-      othersListEl.appendChild(li);
-      return;
-    }
-    items.forEach(function(item){
-      var li = el("li");
-      li.appendChild(el("span", { "class": "yr" }, formatYear(item.entry.year)));
-      var text = (item.paragraphs && item.paragraphs[0]) ? item.paragraphs[0] : item.entry.text;
-      li.appendChild(el("p", null, text));
-      if (item.pageUrl){
-        li.appendChild(el("a", { "class": "more", href: item.pageUrl, target: "_blank", rel: "noopener" }, "Wikipedia →"));
-      }
-      othersListEl.appendChild(li);
-    });
-  }
-
-  function removeEntry(list, entry){
-    return list.filter(function(e){ return !(e.year === entry.year && e.text === entry.text); });
   }
 
   // ---- wikitext parsing ----
@@ -540,8 +489,8 @@
     return "https://pl.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title.replace(/ /g, "_"));
   }
 
-  function introExtractUrl(title){
-    return "https://pl.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&titles=" +
+  function articleExtractUrl(title){
+    return "https://pl.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exchars=2200&titles=" +
       encodeURIComponent(title) + "&format=json&formatversion=2&origin=*";
   }
 
@@ -567,24 +516,19 @@
     });
   }
 
-  function extractParagraphs(introData, fallback){
-    var page = introData && introData.query && introData.query.pages && introData.query.pages[0];
+  function extractParagraphs(articleData, fallback){
+    var page = articleData && articleData.query && articleData.query.pages && articleData.query.pages[0];
     var raw = page && page.extract;
     if (!raw) return fallback ? [fallback] : [];
-    return raw.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean).slice(0, 3);
-  }
-
-  async function enrichEntry(entry){
-    if (!entry.linkTitle) return { entry: entry, images: [], paragraphs: [], pageUrl: null };
-    var summary = await fetchJson(pageSummaryUrl(entry.linkTitle)).catch(function(){ return null; });
-    var pageUrl = (summary && summary.content_urls && summary.content_urls.desktop && summary.content_urls.desktop.page) || wikiUrl(entry.linkTitle);
-    return { entry: entry, images: [], paragraphs: summary && summary.extract ? [summary.extract] : [], pageUrl: pageUrl };
+    var paragraphs = raw.split(/\n+/).map(function(s){ return s.trim(); })
+      .filter(function(s){ return s.length >= 40 && s.split(/\s+/).length >= 6; });
+    return (paragraphs.length ? paragraphs : (fallback ? [fallback] : [])).slice(0, 5);
   }
 
   async function fetchLinkedTopic(title){
     var results = await Promise.all([
       fetchJson(pageSummaryUrl(title)).catch(function(){ return null; }),
-      fetchJson(introExtractUrl(title)).catch(function(){ return null; }),
+      fetchJson(articleExtractUrl(title)).catch(function(){ return null; }),
       fetchJson(commonsSearchUrl(title)).catch(function(){ return null; })
     ]);
     var summary = results[0];
@@ -608,11 +552,21 @@
   }
 
   async function pickHero(candidates){
-    var top = candidates.filter(function(c){ return c.linkTitle; }).slice(0, 3);
+    var top = candidates.filter(function(c){ return c.linkTitle; }).slice(0, 5);
     if (!top.length) return null;
     var enriched = await Promise.all(top.map(enrichHero));
     var withImage = enriched.find(function(e){ return e.images.length; });
     return withImage || enriched[0];
+  }
+
+  var NEGATIVE_RE = /wojn[ae]|wojny|bitw|król|królow|cesarz|cesarzow|prezydent|premier|minister|sejm|parlament|traktat|ustaw|rewolucj|zamach|zamordowa|wybor|dyktator|junt|rząd|armi|wojsk|inwazj|okupacj|dynasti|koronacj|dekret|polityk/i;
+  var POSITIVE_RE = /wynalaz|odkry|po raz pierwszy|pierwsz[ayeż]|teatr|film|ksi[ąa]żk|malarz|malarstw|pisarz|poet[ay]|muzy|kompozytor|piosenk|rekord|wystaw|patent|naukow|eksperyment|podr[oó]ż|wypraw|zjawisk|zwyczaj|moda|kuchni|potraw|sport|igrzysk|festiwal|artyst|aktor|re[żz]yser|wynalazek|osobliw|kuriozal|niezwyk[lł]|anegdot|ciekawostk/i;
+
+  function storyScore(entry){
+    var s = 0;
+    if (NEGATIVE_RE.test(entry.text)) s -= 2;
+    if (POSITIVE_RE.test(entry.text)) s += 3;
+    return s;
   }
 
   async function loadDay(day, month, requestId){
@@ -642,19 +596,25 @@
         });
       }
 
-      if (!poland.length && !world.length) throw new Error("Nie znaleziono wydarzeń dla tej daty w artykule „" + title + "”");
+      var births = parseEventsSection(wikitext, "Urodzili się");
+      var deaths = parseEventsSection(wikitext, "Zmarli");
+      var pool = world.concat(poland, births, deaths);
 
-      var byRecency = world.concat(poland).sort(function(a, b){ return b.year - a.year; });
-      var hero = await pickHero(byRecency);
-      if (requestId !== lastRequest) return;
+      if (!pool.length) throw new Error("Nie znaleziono wydarzeń dla tej daty w artykule „" + title + "”");
 
-      var rest = hero ? removeEntry(byRecency, hero.entry) : byRecency;
-      var otherCandidates = rest.slice(0, 5);
-      var others = await Promise.all(otherCandidates.map(enrichEntry));
+      var thisYear = new Date().getFullYear();
+      var old = pool.filter(function(e){ return e.linkTitle && (thisYear - e.year) >= 100; });
+      var ranked = (old.length ? old : pool.filter(function(e){ return e.linkTitle; }))
+        .sort(function(a, b){
+          var diff = storyScore(b) - storyScore(a);
+          return diff !== 0 ? diff : (thisYear - b.year) - (thisYear - a.year);
+        });
+
+      var hero = await pickHero(ranked);
       if (requestId !== lastRequest) return;
+      if (!hero) throw new Error("Nie udało się znaleźć historii z ilustrowanym artykułem dla tej daty");
 
       renderHero(hero);
-      renderOthers(others);
 
       stateLoading.hidden = true;
       content.hidden = false;
