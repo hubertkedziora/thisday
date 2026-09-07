@@ -275,7 +275,7 @@
 
       <footer class="credit">
         Źródło: <a href="https://pl.wikipedia.org/" target="_blank" rel="noopener">Wikipedia</a>, treści na licencji CC BY‑SA.
-        Podział na „świat” i „Polskę” jest automatyczny i bywa niedoskonały.
+        Podział na „świat” i „Polskę” pochodzi z artykułu Wikipedii dla danego dnia; gdy go zabraknie, dobieramy go automatycznie i bywa to niedoskonałe.
       </footer>
     </div>
   </section>
@@ -361,37 +361,29 @@
     return node;
   }
 
-  function wikiUrl(page){
-    return page && page.content_urls && page.content_urls.desktop
-      ? page.content_urls.desktop.page
-      : (page ? "https://pl.wikipedia.org/wiki/" + encodeURIComponent(page.title) : null);
+  function wikiUrl(title){
+    return "https://pl.wikipedia.org/wiki/" + encodeURIComponent(title.replace(/ /g, "_"));
   }
 
-  function bestPage(entry){
-    if (!entry.pages || !entry.pages.length) return null;
-    var withThumb = entry.pages.find(function(p){ return p.thumbnail && p.thumbnail.source; });
-    return withThumb || entry.pages[0];
-  }
-
-  function renderFeatured(entry){
+  function renderFeatured(pick){
     featuredEl.innerHTML = "";
-    if (!entry){
+    if (!pick){
       featuredEl.hidden = true;
       return;
     }
     featuredEl.hidden = false;
+    var entry = pick.entry, summary = pick.summary;
     var label = el("span", { "class": "section-label" }, "Najważniejsze wydarzenie");
     featuredEl.appendChild(label);
 
-    var page = bestPage(entry);
-    if (page && page.thumbnail && page.thumbnail.source){
+    if (summary && summary.thumbnail && summary.thumbnail.source){
       var figure = el("figure");
       var img = el("img");
-      img.src = page.thumbnail.source;
-      img.alt = page.description || page.title || "";
+      img.src = summary.thumbnail.source;
+      img.alt = summary.description || summary.title || "";
       img.loading = "lazy";
       figure.appendChild(img);
-      var cap = el("figcaption", null, page.description || page.title || "");
+      var cap = el("figcaption", null, summary.description || summary.title || "");
       figure.appendChild(cap);
       featuredEl.appendChild(figure);
     }
@@ -401,14 +393,11 @@
     p.appendChild(document.createTextNode(entry.text));
     featuredEl.appendChild(p);
 
-    if (page){
-      var url = wikiUrl(page);
-      if (url){
-        var src = el("p", { "class": "src" });
-        var a = el("a", { href: url, target: "_blank", rel: "noopener" }, "Czytaj na Wikipedii →");
-        src.appendChild(a);
-        featuredEl.appendChild(src);
-      }
+    if (entry.linkTitle){
+      var src = el("p", { "class": "src" });
+      var a = el("a", { href: wikiUrl(entry.linkTitle), target: "_blank", rel: "noopener" }, "Czytaj na Wikipedii →");
+      src.appendChild(a);
+      featuredEl.appendChild(src);
     }
   }
 
@@ -423,10 +412,8 @@
     entries.forEach(function(entry){
       var li = el("li");
       li.appendChild(el("span", { "class": "yr" }, formatYear(entry.year)));
-      var page = bestPage(entry);
-      var url = page ? wikiUrl(page) : null;
-      if (url){
-        var a = el("a", { href: url, target: "_blank", rel: "noopener" }, entry.text);
+      if (entry.linkTitle){
+        var a = el("a", { href: wikiUrl(entry.linkTitle), target: "_blank", rel: "noopener" }, entry.text);
         li.appendChild(a);
       } else {
         li.appendChild(el("span", null, entry.text));
@@ -435,28 +422,52 @@
     });
   }
 
-  function dedupe(entries, exclude){
-    var seen = new Set();
-    if (exclude) seen.add(exclude.year + "|" + exclude.text);
-    return entries.filter(function(e){
-      var key = e.year + "|" + e.text;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    });
+  function removeEntry(list, entry){
+    return list.filter(function(e){ return !(e.year === entry.year && e.text === entry.text); });
   }
 
   function sortByYear(entries){
     return entries.slice().sort(function(a, b){ return a.year - b.year; });
   }
 
-  function pickFeatured(selected, events){
-    var pool = (selected && selected.length ? selected : events) || [];
-    var withImage = pool.find(function(e){
-      var p = bestPage(e);
-      return p && p.thumbnail && p.thumbnail.source;
+  // ---- wikitext parsing ----
+
+  function stripWikitext(raw){
+    var text = raw;
+    text = text.replace(/<!--[\s\S]*?-->/g, "");
+    text = text.replace(/<ref[^>]*\/>/gi, "");
+    text = text.replace(/<ref[^>]*>[\s\S]*?<\/ref>/gi, "");
+    text = text.replace(/\{\{[^{}]*\}\}/g, "");
+    text = text.replace(/\{\{[^{}]*\}\}/g, "");
+    var firstLink = null;
+    text = text.replace(/\[\[([^\]|#]+)(?:#[^\]|]*)?(?:\|([^\]]*))?\]\]/g, function(full, target, display){
+      var t = target.trim();
+      if (!firstLink && t) firstLink = t;
+      return (display !== undefined && display !== "") ? display : t;
     });
-    return withImage || pool[0] || null;
+    text = text.replace(/\[(https?:\/\/[^\s\]]+)\s*([^\]]*)\]/g, function(full, url, label){ return label || url; });
+    text = text.replace(/'''''/g, "").replace(/'''/g, "").replace(/''/g, "");
+    text = text.replace(/<[^>]+>/g, "");
+    text = text.replace(/\s+/g, " ").trim();
+    return { text: text, firstLink: firstLink };
+  }
+
+  function parseEventsSection(wikitext, heading){
+    var escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    var re = new RegExp("==\\s*" + escaped + "\\s*==([\\s\\S]*?)(?:\\n==[^=]|$)", "i");
+    var m = wikitext.match(re);
+    if (!m) return [];
+    var events = [];
+    m[1].split("\n").forEach(function(line){
+      var lm = line.match(/^\*\s*(?:ok\.\s*)?(\d{1,4})\s*(p\.?\s*n\.?\s*e\.?)?\s*[–—-]\s*(.+)$/i);
+      if (!lm) return;
+      var year = parseInt(lm[1], 10);
+      if (lm[2]) year = -year;
+      var parsed = stripWikitext(lm[3]);
+      if (!parsed.text) return;
+      events.push({ year: year, text: parsed.text, linkTitle: parsed.firstLink });
+    });
+    return events;
   }
 
   async function fetchJson(url){
@@ -465,41 +476,63 @@
     return res.json();
   }
 
+  async function pickFeatured(candidates){
+    var top = candidates.filter(function(c){ return c.linkTitle; }).slice(0, 6);
+    if (!top.length) return null;
+    var summaries = await Promise.allSettled(top.map(function(c){
+      return fetchJson("https://pl.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(c.linkTitle.replace(/ /g, "_")));
+    }));
+    for (var i = 0; i < top.length; i++){
+      if (summaries[i].status === "fulfilled" && summaries[i].value.thumbnail && summaries[i].value.thumbnail.source){
+        return { entry: top[i], summary: summaries[i].value };
+      }
+    }
+    for (var j = 0; j < top.length; j++){
+      if (summaries[j].status === "fulfilled"){
+        return { entry: top[j], summary: summaries[j].value };
+      }
+    }
+    return { entry: top[0], summary: null };
+  }
+
   async function loadDay(day, month, requestId){
     stateLoading.hidden = false;
     stateError.hidden = true;
     errDetail.textContent = "";
     content.hidden = true;
 
-    var mm = pad(month), dd = pad(day);
-    var selectedData = null, eventsData = null;
+    var title = formatDate(day, month);
 
     try {
-      var results = await Promise.allSettled([
-        fetchJson("https://api.wikimedia.org/feed/v1/wikipedia/pl/onthisday/selected/" + mm + "/" + dd),
-        fetchJson("https://api.wikimedia.org/feed/v1/wikipedia/pl/onthisday/events/" + mm + "/" + dd)
-      ]);
+      var apiUrl = "https://pl.wikipedia.org/w/api.php?action=parse&page=" +
+        encodeURIComponent(title) + "&prop=wikitext&format=json&formatversion=2&origin=*";
+      var data = await fetchJson(apiUrl);
       if (requestId !== lastRequest) return;
 
-      if (results[0].status === "fulfilled") selectedData = results[0].value.selected || [];
-      if (results[1].status === "fulfilled") eventsData = results[1].value.events || [];
+      if (data.error) throw new Error(data.error.info || data.error.code || "Błąd API Wikipedii");
+      if (!data.parse || typeof data.parse.wikitext !== "string") throw new Error("Nieoczekiwana odpowiedź API");
 
-      if (!selectedData && !eventsData){
-        var reasons = results.map(function(r){
-          return r.status === "rejected" ? (r.reason && r.reason.message || String(r.reason)) : null;
-        }).filter(Boolean);
-        throw new Error(reasons.join(" / ") || "Brak danych");
+      var wikitext = data.parse.wikitext;
+      var poland = parseEventsSection(wikitext, "Wydarzenia w Polsce");
+      var world = parseEventsSection(wikitext, "Wydarzenia na świecie");
+
+      if (!poland.length && !world.length){
+        parseEventsSection(wikitext, "Wydarzenia").forEach(function(e){
+          (POLAND_RE.test(e.text) ? poland : world).push(e);
+        });
       }
 
-      var featured = pickFeatured(selectedData || [], eventsData || []);
-      var events = dedupe(eventsData || [], featured);
+      if (!poland.length && !world.length) throw new Error("Nie znaleziono wydarzeń dla tej daty w artykule „" + title + "”");
 
-      var world = [], poland = [];
-      events.forEach(function(e){
-        if (POLAND_RE.test(e.text)) poland.push(e); else world.push(e);
-      });
+      var pick = await pickFeatured(world.concat(poland));
+      if (requestId !== lastRequest) return;
 
-      renderFeatured(featured);
+      if (pick){
+        poland = removeEntry(poland, pick.entry);
+        world = removeEntry(world, pick.entry);
+      }
+
+      renderFeatured(pick);
       renderList(listWorld, sortByYear(world).slice(0, 6), "Tego dnia nic wielkiego — przynajmniej wedle archiwów.");
       renderList(listPoland, sortByYear(poland).slice(0, 6), "Z tego dnia archiwa nie zachowały śladu w Polsce.");
 
