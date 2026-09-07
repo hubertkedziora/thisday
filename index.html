@@ -179,6 +179,10 @@
 
   /* ---------- hero (featured event) ---------- */
   .hero{margin-bottom:76px;}
+  .hero-title{
+    font-size:clamp(1.7rem,4.2vw,2.5rem);font-weight:700;line-height:1.15;
+    margin:0 0 24px;color:var(--ink);letter-spacing:-.01em;
+  }
   .hero figure{margin:0 0 30px;}
   .hero img{
     width:100%;height:min(58vh,560px);object-fit:cover;display:block;
@@ -199,6 +203,15 @@
   .hero .extract{
     font-size:1.08rem;line-height:1.75;color:var(--ink-dim);margin:0 0 18px;
     max-width:640px;
+  }
+  .hero .inline-figure{margin:26px 0;max-width:640px;}
+  .hero .inline-figure img{
+    width:100%;max-height:340px;object-fit:cover;display:block;
+    border:1px solid var(--line);
+    filter:grayscale(1) contrast(1.05);
+  }
+  .hero .inline-figure figcaption{
+    font-size:.78rem;color:var(--ink-faint);margin-top:8px;text-align:right;
   }
   .hero .src{font-size:.85rem;color:var(--ink-faint);}
 
@@ -375,16 +388,21 @@
     }
     heroEl.hidden = false;
     var entry = pick.entry;
+    var images = pick.images || [];
     heroEl.appendChild(el("span", { "class": "section-label" }, "Najważniejsze wydarzenie"));
 
-    if (pick.image){
+    if (pick.title){
+      heroEl.appendChild(el("h2", { "class": "hero-title" }, pick.title));
+    }
+
+    if (images[0]){
       var figure = el("figure");
       var img = el("img");
-      img.src = pick.image;
-      img.alt = pick.imageCaption || entry.text;
+      img.src = images[0].source;
+      img.alt = images[0].caption || pick.title || entry.text;
       img.loading = "lazy";
       figure.appendChild(img);
-      if (pick.imageCaption) figure.appendChild(el("figcaption", null, pick.imageCaption));
+      if (images[0].caption) figure.appendChild(el("figcaption", null, images[0].caption));
       heroEl.appendChild(figure);
     }
 
@@ -393,9 +411,22 @@
     lead.appendChild(document.createTextNode(entry.text));
     heroEl.appendChild(lead);
 
-    if (pick.extract && pick.extract.trim()){
-      heroEl.appendChild(el("p", { "class": "extract" }, pick.extract.trim()));
-    }
+    var paragraphs = pick.paragraphs || [];
+    var extraImages = images.slice(1);
+    paragraphs.forEach(function(para, i){
+      heroEl.appendChild(el("p", { "class": "extract" }, para));
+      var inline = extraImages[i];
+      if (i < paragraphs.length - 1 && inline){
+        var figure2 = el("figure", { "class": "inline-figure" });
+        var img2 = el("img");
+        img2.src = inline.source;
+        img2.alt = inline.caption || "";
+        img2.loading = "lazy";
+        figure2.appendChild(img2);
+        if (inline.caption) figure2.appendChild(el("figcaption", null, inline.caption));
+        heroEl.appendChild(figure2);
+      }
+    });
 
     if (pick.pageUrl){
       var src = el("p", { "class": "src" });
@@ -415,7 +446,7 @@
     items.forEach(function(item){
       var li = el("li");
       li.appendChild(el("span", { "class": "yr" }, formatYear(item.entry.year)));
-      var text = (item.extract && item.extract.trim()) ? item.extract.trim() : item.entry.text;
+      var text = (item.paragraphs && item.paragraphs[0]) ? item.paragraphs[0] : item.entry.text;
       li.appendChild(el("p", null, text));
       if (item.pageUrl){
         li.appendChild(el("a", { "class": "more", href: item.pageUrl, target: "_blank", rel: "noopener" }, "Wikipedia →"));
@@ -509,57 +540,78 @@
     return "https://pl.wikipedia.org/api/rest_v1/page/summary/" + encodeURIComponent(title.replace(/ /g, "_"));
   }
 
+  function introExtractUrl(title){
+    return "https://pl.wikipedia.org/w/api.php?action=query&prop=extracts&exintro=1&explaintext=1&titles=" +
+      encodeURIComponent(title) + "&format=json&formatversion=2&origin=*";
+  }
+
   function commonsSearchUrl(title){
     return "https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch=" +
       encodeURIComponent(title) + "&gsrnamespace=6&gsrlimit=6&prop=imageinfo&iiprop=url|size&iiurlwidth=1200&format=json&formatversion=2&origin=*";
   }
 
-  function pickBestCommonsImage(data){
-    if (!data || !data.query || !data.query.pages) return null;
+  function pickCommonsImages(data, limit){
+    if (!data || !data.query || !data.query.pages) return [];
     var pages = data.query.pages.filter(function(p){ return p.imageinfo && p.imageinfo.length; });
-    if (!pages.length) return null;
-    var good = pages.find(function(p){
+    pages.sort(function(a, b){
+      var wa = a.imageinfo[0].thumbwidth || a.imageinfo[0].width || 0;
+      var wb = b.imageinfo[0].thumbwidth || b.imageinfo[0].width || 0;
+      return (wb >= 400 ? 1 : 0) - (wa >= 400 ? 1 : 0);
+    });
+    return pages.slice(0, limit).map(function(p){
       var ii = p.imageinfo[0];
-      return (ii.thumbwidth || ii.width || 0) >= 400;
-    }) || pages[0];
-    var ii = good.imageinfo[0];
-    return {
-      source: ii.thumburl || ii.url,
-      caption: (good.title || "").replace(/^File:/i, "").replace(/\.[a-z0-9]{2,5}$/i, "").replace(/_/g, " ")
-    };
+      return {
+        source: ii.thumburl || ii.url,
+        caption: (p.title || "").replace(/^File:/i, "").replace(/\.[a-z0-9]{2,5}$/i, "").replace(/_/g, " ")
+      };
+    });
+  }
+
+  function extractParagraphs(introData, fallback){
+    var page = introData && introData.query && introData.query.pages && introData.query.pages[0];
+    var raw = page && page.extract;
+    if (!raw) return fallback ? [fallback] : [];
+    return raw.split(/\n+/).map(function(s){ return s.trim(); }).filter(Boolean).slice(0, 3);
   }
 
   async function enrichEntry(entry){
-    if (!entry.linkTitle) return { entry: entry, image: null, imageCaption: "", extract: null, pageUrl: null };
+    if (!entry.linkTitle) return { entry: entry, images: [], paragraphs: [], pageUrl: null };
     var summary = await fetchJson(pageSummaryUrl(entry.linkTitle)).catch(function(){ return null; });
     var pageUrl = (summary && summary.content_urls && summary.content_urls.desktop && summary.content_urls.desktop.page) || wikiUrl(entry.linkTitle);
-    return { entry: entry, image: null, imageCaption: "", extract: summary && summary.extract, pageUrl: pageUrl };
+    return { entry: entry, images: [], paragraphs: summary && summary.extract ? [summary.extract] : [], pageUrl: pageUrl };
+  }
+
+  async function fetchLinkedTopic(title){
+    var results = await Promise.all([
+      fetchJson(pageSummaryUrl(title)).catch(function(){ return null; }),
+      fetchJson(introExtractUrl(title)).catch(function(){ return null; }),
+      fetchJson(commonsSearchUrl(title)).catch(function(){ return null; })
+    ]);
+    var summary = results[0];
+    var images = pickCommonsImages(results[2], 4);
+    if (!images.length && summary && summary.thumbnail && summary.thumbnail.source){
+      images = [{ source: summary.thumbnail.source, caption: summary.description || summary.title || "" }];
+    }
+    return { linkTitle: title, summary: summary, introData: results[1], images: images };
   }
 
   async function enrichHero(entry){
-    if (!entry.linkTitle) return { entry: entry, image: null, imageCaption: "", extract: null, pageUrl: null };
-    var candidates = (entry.links && entry.links.length ? entry.links : [entry.linkTitle]).slice(0, 3);
-    var summaryPromise = fetchJson(pageSummaryUrl(entry.linkTitle)).catch(function(){ return null; });
-    var commonsPromises = candidates.map(function(title){
-      return fetchJson(commonsSearchUrl(title)).then(pickBestCommonsImage).catch(function(){ return null; });
-    });
-    var results = await Promise.all([summaryPromise].concat(commonsPromises));
-    var summary = results[0];
-    var commonsImage = null;
-    for (var i = 1; i < results.length; i++){
-      if (results[i]){ commonsImage = results[i]; break; }
-    }
-    var image = (commonsImage && commonsImage.source) || (summary && summary.thumbnail && summary.thumbnail.source) || null;
-    var imageCaption = (commonsImage && commonsImage.caption) || (summary && (summary.description || summary.title)) || "";
-    var pageUrl = (summary && summary.content_urls && summary.content_urls.desktop && summary.content_urls.desktop.page) || wikiUrl(entry.linkTitle);
-    return { entry: entry, image: image, imageCaption: imageCaption, extract: summary && summary.extract, pageUrl: pageUrl };
+    if (!entry.linkTitle) return { entry: entry, title: null, images: [], paragraphs: [], pageUrl: null };
+    var candidates = (entry.links && entry.links.length ? entry.links : [entry.linkTitle]).slice(0, 2);
+    var topics = await Promise.all(candidates.map(fetchLinkedTopic));
+    var chosen = topics.find(function(t){ return t.images.length; }) || topics[0];
+    var summary = chosen.summary;
+    var title = (summary && summary.title) || chosen.linkTitle;
+    var paragraphs = extractParagraphs(chosen.introData, summary && summary.extract);
+    var pageUrl = (summary && summary.content_urls && summary.content_urls.desktop && summary.content_urls.desktop.page) || wikiUrl(chosen.linkTitle);
+    return { entry: entry, title: title, images: chosen.images, paragraphs: paragraphs, pageUrl: pageUrl };
   }
 
   async function pickHero(candidates){
-    var top = candidates.filter(function(c){ return c.linkTitle; }).slice(0, 4);
+    var top = candidates.filter(function(c){ return c.linkTitle; }).slice(0, 3);
     if (!top.length) return null;
     var enriched = await Promise.all(top.map(enrichHero));
-    var withImage = enriched.find(function(e){ return e.image; });
+    var withImage = enriched.find(function(e){ return e.images.length; });
     return withImage || enriched[0];
   }
 
