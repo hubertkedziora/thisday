@@ -189,7 +189,7 @@ async function askClaude(env, day, month, pool){
     },
     body: JSON.stringify({
       model: env.ANTHROPIC_MODEL || "claude-sonnet-5",
-      max_tokens: 1800,
+      max_tokens: 3000,
       messages: [{ role: "user", content: prompt }]
     })
   });
@@ -199,10 +199,18 @@ async function askClaude(env, day, month, pool){
   }
   const data = await res.json();
   const raw = data.content && data.content[0] && data.content[0].text;
-  if (!raw) throw new Error("Pusta odpowiedź modelu");
+  if (!raw){
+    throw new Error("Pusta odpowiedź modelu. stop_reason=" + data.stop_reason +
+      " content=" + JSON.stringify(data.content).slice(0, 400) +
+      " usage=" + JSON.stringify(data.usage));
+  }
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error("Model nie zwrócił JSON-a");
-  return JSON.parse(jsonMatch[0]);
+  if (!jsonMatch) throw new Error("Model nie zwrócił JSON-a. Surowa odpowiedź: " + raw.slice(0, 500));
+  try {
+    return JSON.parse(jsonMatch[0]);
+  } catch (e){
+    throw new Error("Nieprawidłowy JSON od modelu: " + String(e.message) + " | fragment: " + jsonMatch[0].slice(0, 500));
+  }
 }
 
 // ---------- main handler ----------
