@@ -1,0 +1,12 @@
+name = "thisday-api"
+main = "src/index.js"
+compatibility_date = "2024-11-01"
+
+[vars]
+ALLOWED_ORIGIN = "https://hubertkedziora.github.io"
+ANTHROPIC_MODEL = "claude-sonnet-5"
+
+# Created via `wrangler kv:namespace create STORY_CACHE` — paste the printed id below.
+[[kv_namespaces]]
+binding = "STORY_CACHE"
+id = "REPLACE_WITH_KV_NAMESPACE_ID"
