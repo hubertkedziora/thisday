@@ -449,7 +449,28 @@
     text = text.replace(/'''''/g, "").replace(/'''/g, "").replace(/''/g, "");
     text = text.replace(/<[^>]+>/g, "");
     text = text.replace(/\s+/g, " ").trim();
+    text = text.replace(/:$/, "").trim();
     return { text: text, firstLink: firstLink };
+  }
+
+  function splitBulletDepth(line){
+    var m = line.match(/^(\*{1,2})\s*(.*)$/);
+    if (!m) return null;
+    var content = m[2].replace(/^&nbsp;\s*/i, "").trim();
+    if (!content) return null;
+    return { depth: m[1].length, content: content };
+  }
+
+  function parseYearPrefix(content){
+    var ym = content.match(/^\[\[(\d{1,4})\]\]|^(\d{1,4})\b/);
+    if (!ym) return null;
+    var year = parseInt(ym[1] || ym[2], 10);
+    var rest = content.slice(ym[0].length);
+    var bc = rest.match(/^\s*p\.?\s*n\.?\s*e\.?/i);
+    if (bc){ year = -year; rest = rest.slice(bc[0].length); }
+    rest = rest.replace(/^\s*[–—-]\s*/, "").trim();
+    if (rest === ":" || rest === "") rest = "";
+    return { year: year, rest: rest };
   }
 
   function parseEventsSection(wikitext, heading){
@@ -458,14 +479,24 @@
     var m = wikitext.match(re);
     if (!m) return [];
     var events = [];
+    var currentYear = null;
     m[1].split("\n").forEach(function(line){
-      var lm = line.match(/^\*\s*(?:ok\.\s*)?(\d{1,4})\s*(p\.?\s*n\.?\s*e\.?)?\s*[–—-]\s*(.+)$/i);
-      if (!lm) return;
-      var year = parseInt(lm[1], 10);
-      if (lm[2]) year = -year;
-      var parsed = stripWikitext(lm[3]);
+      var b = splitBulletDepth(line);
+      if (!b) return;
+      var rawText;
+      if (b.depth === 1){
+        var yp = parseYearPrefix(b.content);
+        if (!yp) return;
+        currentYear = yp.year;
+        rawText = yp.rest;
+      } else {
+        if (currentYear === null) return;
+        rawText = b.content;
+      }
+      if (!rawText) return;
+      var parsed = stripWikitext(rawText);
       if (!parsed.text) return;
-      events.push({ year: year, text: parsed.text, linkTitle: parsed.firstLink });
+      events.push({ year: currentYear, text: parsed.text, linkTitle: parsed.firstLink });
     });
     return events;
   }
@@ -524,7 +555,8 @@
 
       if (!poland.length && !world.length) throw new Error("Nie znaleziono wydarzeń dla tej daty w artykule „" + title + "”");
 
-      var pick = await pickFeatured(world.concat(poland));
+      var byRecency = world.concat(poland).sort(function(a, b){ return b.year - a.year; });
+      var pick = await pickFeatured(byRecency);
       if (requestId !== lastRequest) return;
 
       if (pick){
