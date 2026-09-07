@@ -476,8 +476,8 @@
 
     try {
       var results = await Promise.allSettled([
-        fetchJson("https://pl.wikipedia.org/api/rest_v1/feed/onthisday/selected/" + mm + "/" + dd),
-        fetchJson("https://pl.wikipedia.org/api/rest_v1/feed/onthisday/events/" + mm + "/" + dd)
+        fetchJson("https://api.wikimedia.org/feed/v1/wikipedia/pl/onthisday/selected/" + mm + "/" + dd),
+        fetchJson("https://api.wikimedia.org/feed/v1/wikipedia/pl/onthisday/events/" + mm + "/" + dd)
       ]);
       if (requestId !== lastRequest) return;
 
