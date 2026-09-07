@@ -198,10 +198,11 @@ async function askClaude(env, day, month, pool){
     throw new Error("Anthropic API HTTP " + res.status + " " + errText.slice(0, 300));
   }
   const data = await res.json();
-  const raw = data.content && data.content[0] && data.content[0].text;
+  const textBlock = Array.isArray(data.content) && data.content.find(function(b){ return b.type === "text"; });
+  const raw = textBlock && textBlock.text;
   if (!raw){
     throw new Error("Pusta odpowiedź modelu. stop_reason=" + data.stop_reason +
-      " content=" + JSON.stringify(data.content).slice(0, 400) +
+      " content_types=" + (Array.isArray(data.content) ? data.content.map(function(b){ return b.type; }).join(",") : typeof data.content) +
       " usage=" + JSON.stringify(data.usage));
   }
   const jsonMatch = raw.match(/\{[\s\S]*\}/);
