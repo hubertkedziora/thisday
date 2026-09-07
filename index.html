@@ -6,34 +6,27 @@
 <title>Tego dnia</title>
 <meta name="description" content="Wpisz dowolny dzień i miesiąc, a dowiesz się, co istotnego wydarzyło się wtedy na świecie i w Polsce.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.85em' font-size='82'%3E%F0%9F%95%B0%EF%B8%8F%3C/text%3E%3C/svg%3E">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#faf7f1;
-    --bg-soft:#f2ede2;
-    --ink:#2b2620;
-    --ink-dim:#6b6255;
-    --ink-faint:#a89f8f;
-    --accent:#7a2e2e;
-    --gold:#a9843f;
-    --line:rgba(43,38,32,.16);
-    --line-soft:rgba(43,38,32,.09);
-    --shadow:0 18px 40px -22px rgba(43,38,32,.35);
+    --bg:#ffffff;
+    --bg-soft:#f4f4f4;
+    --ink:#111111;
+    --ink-dim:#4a4a4a;
+    --ink-faint:#8a8a8a;
+    --accent:#000000;
+    --line:rgba(0,0,0,.2);
+    --line-soft:rgba(0,0,0,.1);
   }
   @media (prefers-color-scheme: dark){
     :root{
-      --bg:#1b1712;
-      --bg-soft:#251f19;
-      --ink:#ece5d8;
-      --ink-dim:#b8ac99;
-      --ink-faint:#7d7364;
-      --accent:#d99a8a;
-      --gold:#cba969;
-      --line:rgba(236,229,216,.16);
-      --line-soft:rgba(236,229,216,.08);
-      --shadow:0 18px 40px -22px rgba(0,0,0,.6);
+      --bg:#0a0a0a;
+      --bg-soft:#161616;
+      --ink:#f2f2f2;
+      --ink-dim:#b5b5b5;
+      --ink-faint:#797979;
+      --accent:#ffffff;
+      --line:rgba(255,255,255,.22);
+      --line-soft:rgba(255,255,255,.1);
     }
   }
   *{box-sizing:border-box;}
@@ -41,14 +34,13 @@
   body{
     background:var(--bg);
     color:var(--ink);
-    font-family:"EB Garamond",Georgia,serif;
-    font-size:18px;
+    font-family:-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:17px;
     line-height:1.6;
     -webkit-font-smoothing:antialiased;
   }
-  a{color:var(--accent);text-decoration-color:var(--line);text-underline-offset:3px;}
+  a{color:var(--ink);text-decoration-color:var(--line);text-underline-offset:3px;}
   a:hover{text-decoration-color:currentColor;}
-  .display{font-family:"Cormorant Garamond",Georgia,serif;}
   button{font-family:inherit;}
 
   .screen{
@@ -78,19 +70,16 @@
   }
   .big-date{
     display:block;
-    font-family:"Cormorant Garamond",Georgia,serif;
-    font-weight:400;
-    font-style:italic;
-    font-size:clamp(2.8rem,9vw,5.4rem);
+    font-weight:300;
+    font-size:clamp(2.6rem,9vw,5rem);
     line-height:1.05;
-    letter-spacing:-.01em;
+    letter-spacing:-.02em;
     margin:0 0 22px;
     color:var(--ink);
   }
   .tagline{
     color:var(--ink-dim);
-    font-style:italic;
-    font-size:1.05rem;
+    font-size:1.02rem;
     max-width:420px;
     margin:0 auto 54px;
   }
@@ -112,7 +101,7 @@
     border:none;
     border-bottom:1px solid var(--line);
     color:var(--ink);
-    font-family:"EB Garamond",Georgia,serif;
+    font-family:inherit;
     font-size:1.02rem;
     padding:4px 22px 6px 2px;
     cursor:pointer;
@@ -162,7 +151,7 @@
     border-bottom:1px solid var(--line);padding-bottom:18px;margin-bottom:48px;
   }
   .results-head h1{
-    font-family:"Cormorant Garamond",Georgia,serif;font-weight:500;font-style:italic;
+    font-weight:300;
     font-size:clamp(1.8rem,4.5vw,2.6rem);margin:0;color:var(--ink);
   }
   .back-link{
@@ -173,40 +162,44 @@
   .back-link:hover{color:var(--accent);}
 
   .state-msg{
-    text-align:center;color:var(--ink-dim);font-style:italic;padding:60px 20px;
+    text-align:center;color:var(--ink-dim);padding:60px 20px;
   }
   .state-msg .retry{
     display:block;margin:18px auto 0;
+  }
+  .err-detail{
+    display:block;margin-top:14px;font-size:.78rem;color:var(--ink-faint);
+    font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
   }
 
   .featured{margin-bottom:64px;}
   .section-label{
     display:block;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;
-    color:var(--gold);margin-bottom:16px;font-weight:600;
+    color:var(--ink-faint);margin-bottom:16px;font-weight:600;
   }
   .featured figure{margin:0 0 22px;}
   .featured img{
     width:100%;max-height:380px;object-fit:cover;display:block;
-    border:1px solid var(--line);box-shadow:var(--shadow);
-    filter:sepia(.12) saturate(.92);
+    border:1px solid var(--line);
+    filter:grayscale(1) contrast(1.05);
   }
   .featured figcaption{
     font-size:.78rem;color:var(--ink-faint);margin-top:10px;text-align:right;
   }
   .featured .year{
-    font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;color:var(--accent);
-    font-size:1.5rem;margin-right:10px;
+    font-weight:600;color:var(--accent);
+    font-size:1.2rem;margin-right:10px;
   }
-  .featured p{font-size:1.18rem;line-height:1.65;margin:0 0 6px;}
+  .featured p{font-size:1.1rem;line-height:1.65;margin:0 0 6px;}
   .featured .src{font-size:.82rem;color:var(--ink-faint);}
 
   .columns{display:grid;grid-template-columns:1fr 1fr;gap:56px;}
   @media (max-width:640px){.columns{grid-template-columns:1fr;gap:44px;}}
 
   .col h2{
-    font-family:"Cormorant Garamond",Georgia,serif;font-weight:500;font-style:italic;
-    font-size:1.4rem;margin:0 0 22px;padding-bottom:12px;border-bottom:1px solid var(--line-soft);
-    color:var(--ink);
+    font-weight:600;
+    font-size:1.05rem;margin:0 0 22px;padding-bottom:12px;border-bottom:1px solid var(--line-soft);
+    color:var(--ink);text-transform:uppercase;letter-spacing:.06em;
   }
   ul.events{list-style:none;margin:0;padding:0;}
   ul.events li{
@@ -215,12 +208,12 @@
   }
   ul.events li:last-child{border-bottom:none;}
   ul.events .yr{
-    font-family:"Cormorant Garamond",Georgia,serif;font-style:italic;color:var(--accent);
-    flex:none;min-width:3.6em;font-size:1.08rem;
+    font-weight:600;color:var(--accent);
+    flex:none;min-width:3.6em;font-size:.95rem;
   }
   ul.events a{color:var(--ink);text-decoration:none;}
   ul.events a:hover{color:var(--accent);text-decoration:underline;text-underline-offset:3px;}
-  .empty-note{color:var(--ink-faint);font-style:italic;font-size:.95rem;}
+  .empty-note{color:var(--ink-faint);font-size:.95rem;}
 
   footer.credit{
     margin-top:70px;padding-top:22px;border-top:1px solid var(--line-soft);
@@ -236,7 +229,7 @@
   <section id="landing" class="screen">
     <div class="inner">
       <span class="eyebrow">Tego dnia</span>
-      <span class="big-date display" id="landing-date">7 września</span>
+      <span class="big-date" id="landing-date">7 września</span>
       <p class="tagline">Każdy dzień w kalendarzu skrywa kilka historii. Który chcesz dziś otworzyć?</p>
 
       <div class="picker">
@@ -253,7 +246,7 @@
   <section id="results" class="screen" hidden>
     <div class="results-inner">
       <div class="results-head">
-        <h1 class="display" id="results-date">—</h1>
+        <h1 id="results-date">—</h1>
         <button class="back-link" id="btn-back">← inny dzień</button>
       </div>
 
@@ -262,6 +255,7 @@
         <p class="state-msg" id="state-error" hidden>
           Coś przerwało łącze z archiwum. Spróbujmy jeszcze raz.
           <button class="cta retry" id="btn-retry">Spróbuj ponownie</button>
+          <span class="err-detail" id="err-detail"></span>
         </p>
 
         <div id="content" hidden>
@@ -309,6 +303,7 @@
   var btnRetry = document.getElementById("btn-retry");
   var stateLoading = document.getElementById("state-loading");
   var stateError = document.getElementById("state-error");
+  var errDetail = document.getElementById("err-detail");
   var content = document.getElementById("content");
   var featuredEl = document.getElementById("featured");
   var listWorld = document.getElementById("list-world");
@@ -465,14 +460,15 @@
   }
 
   async function fetchJson(url){
-    var res = await fetch(url, { headers: { "Accept": "application/json" } });
-    if (!res.ok) throw new Error("HTTP " + res.status);
+    var res = await fetch(url);
+    if (!res.ok) throw new Error("HTTP " + res.status + " " + url);
     return res.json();
   }
 
   async function loadDay(day, month, requestId){
     stateLoading.hidden = false;
     stateError.hidden = true;
+    errDetail.textContent = "";
     content.hidden = true;
 
     var mm = pad(month), dd = pad(day);
@@ -488,7 +484,12 @@
       if (results[0].status === "fulfilled") selectedData = results[0].value.selected || [];
       if (results[1].status === "fulfilled") eventsData = results[1].value.events || [];
 
-      if (!selectedData && !eventsData) throw new Error("Brak danych");
+      if (!selectedData && !eventsData){
+        var reasons = results.map(function(r){
+          return r.status === "rejected" ? (r.reason && r.reason.message || String(r.reason)) : null;
+        }).filter(Boolean);
+        throw new Error(reasons.join(" / ") || "Brak danych");
+      }
 
       var featured = pickFeatured(selectedData || [], eventsData || []);
       var events = dedupe(eventsData || [], featured);
@@ -506,8 +507,10 @@
       content.hidden = false;
     } catch (err){
       if (requestId !== lastRequest) return;
+      console.error("Tego dnia — błąd pobierania:", err);
       stateLoading.hidden = true;
       stateError.hidden = false;
+      errDetail.textContent = err && err.message ? err.message : String(err);
     }
   }
 
